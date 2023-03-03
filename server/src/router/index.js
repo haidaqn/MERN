@@ -1,10 +1,14 @@
 
+const newUser  = require('./user');
 
-function router(app) {
+const initRoutes = (app) => {
 
-    app.use('/', (req,res) => {
-        res.json("hải đăng là tôi")
-    });
+    
+    app.use('/api/user', newUser);
+
+    app.use('/', (req, res) => res.json('hải đăng'));
+
+
 }
 
-module.exports = router;
+module.exports = initRoutes
