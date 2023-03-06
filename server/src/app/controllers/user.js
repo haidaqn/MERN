@@ -8,9 +8,8 @@ const register = asyncHandler(async (req, res) => {
             success: false,
             mes: 'Missing inputs'
         })
-
-    const user = await User.findOne({ email })
-    if (user) throw new Error('User has existed')
+    const user = await User.findOne({ email });
+    if (user) throw new Error('User has existed');
     else {
         const newUser = await User.create(req.body)
         return res.status(200).json({
@@ -20,4 +19,4 @@ const register = asyncHandler(async (req, res) => {
     }
 })
 
-module.exports = {register};
+module.exports = { register };
