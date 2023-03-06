@@ -1,6 +1,6 @@
 
 // import middleware
-const { notFoundPath, errHandler } = require('../middleware/errHandler');
+const { notFoundPath, errHandler } = require('../middlewares/errHandler');
 //
 const newUser  = require('./user');
 //

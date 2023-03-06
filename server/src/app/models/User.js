@@ -55,7 +55,6 @@ var userSchema = new mongoose.Schema({
 });
 
 // hash password
-
 userSchema.pre('save', async function (next) {
     if (this.isModified('password')) {
         const salt = bcrypt.genSaltSync(10)
@@ -65,5 +64,13 @@ userSchema.pre('save', async function (next) {
         next();
     }
 });
+
+// check pw
+userSchema.methods = {
+    isCorrectPassWord: async function (pw) {
+        return await bcrypt.compare(pw, this.password);
+    },
+    
+}
 
 module.exports = mongoose.model('User', userSchema);
