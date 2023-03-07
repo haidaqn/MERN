@@ -1,7 +1,9 @@
 const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
+const  { generateAccessToken , generateRefreshToken} = require('../../middlewares/jwt');
 
-//
+
+//register
 
 const register = asyncHandler(async (req, res) => {
     const { email, password, firstName, lastName } = req.body
@@ -21,6 +23,8 @@ const register = asyncHandler(async (req, res) => {
     }
 });
 
+//login
+
 const login = asyncHandler(async (req,res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -31,9 +35,19 @@ const login = asyncHandler(async (req,res) => {
     }
     const response = await User.findOne({ email }); // Instance được trả về khi dùng hàm của mongodb
     if (response && await response.isCorrectPassWord(password)) {
-    const { password, role, ...userData } = response.toObject();
+        const { password, role, ...userData } = response.toObject();
+        const userId = response._id;
+        const accessToken = generateAccessToken(userId, role); 
+        const refreshToken = generateRefreshToken(userId);
+        //lưu refresh token vào db
+        await User.findByIdAndUpdate(userId, { refreshToken }, { new: true }); // trả về data sau khi update data new
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            maxAge : 604800000 // thời gian hết hạn 7 ngày
+        })
         return res.status(200).json({
             success: true,
+            accessToken,
             userData 
         });
     } else {
@@ -42,4 +56,16 @@ const login = asyncHandler(async (req,res) => {
 
 });
 
-module.exports = { register, login };
+
+const getCurrent = asyncHandler(async (req, res) => {
+    const { _id } = req.user
+    const user = await User.findById(_id).select('-refreshToken -password -role')
+    return res.status(200).json({
+        success: user ? true : false,
+        rs: user ? user : 'User not found'
+    })
+})
+
+//export
+
+module.exports = { register, login, getCurrent};

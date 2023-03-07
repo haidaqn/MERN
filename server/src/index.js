@@ -1,9 +1,16 @@
 const express = require('express');
 require('dotenv').config();
-const port = process.env.PORT || 8081;
-const app = express();
 const initRoutes = require('./router/index');
 const db = require('./config/db/index');
+const cookieParser = require('cookie-parser');
+
+//
+
+
+const app = express();
+app.use(cookieParser());
+
+const port = process.env.PORT || 8081;
 
 db.connect();
 

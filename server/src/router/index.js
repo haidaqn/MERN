@@ -10,7 +10,6 @@ const initRoutes = (app) => {
     app.use('/', (req, res) => res.json('hải đăng'));
 
 
-
     //err path
     app.use(notFoundPath);
     app.use(errHandler); // hứng lỗi 
