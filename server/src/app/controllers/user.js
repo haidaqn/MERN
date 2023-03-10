@@ -1,10 +1,9 @@
 const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
 const  { generateAccessToken , generateRefreshToken} = require('../../middlewares/jwt');
-
+const jwt = require('jsonwebtoken');
 
 //register
-
 const register = asyncHandler(async (req, res) => {
     const { email, password, firstName, lastName } = req.body
     if (!email || !password || !lastName || !firstName)
@@ -37,10 +36,10 @@ const login = asyncHandler(async (req,res) => {
     if (response && await response.isCorrectPassWord(password)) {
         const { password, role, ...userData } = response.toObject();
         const userId = response._id;
-        const accessToken = generateAccessToken(userId, role); 
-        const refreshToken = generateRefreshToken(userId);
+        const accessToken = generateAccessToken(userId, role); // taoj access
+        const refreshToken = generateRefreshToken(userId); // tao refresh
         //lưu refresh token vào db
-        await User.findByIdAndUpdate(userId, { refreshToken }, { new: true }); // trả về data sau khi update data new
+        await User.findByIdAndUpdate(userId, { refreshToken }, { new: true }); // trả về data new sau khi update data
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             maxAge : 604800000 // thời gian hết hạn 7 ngày
@@ -56,16 +55,59 @@ const login = asyncHandler(async (req,res) => {
 
 });
 
+const logout = asyncHandler(async (req,res) => {
+    const cookie = req.cookies;
+    if (!cookie || !cookie.refreshToken) throw new Error("No refresh token...");
+
+    await User.findOneAndUpdate({ refreshToken: cookie.refreshToken },
+        { refreshToken: '' }, { new: true });
+    
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: true
+    });
+
+    return res.status(200).json({
+        success: true,
+        mes : ' logout is done'
+    })
+
+})
+
 
 const getCurrent = asyncHandler(async (req, res) => {
-    const { _id } = req.user
-    const user = await User.findById(_id).select('-refreshToken -password -role')
+    const userId = req.user.id;
+
+    // console.log(userId);
+
+    const user = await User.findById( userId ).select('-refreshToken -password -role')
+
+    // console.log(user);
+
     return res.status(200).json({
         success: user ? true : false,
         rs: user ? user : 'User not found'
     })
 })
 
+const refreshToken = asyncHandler(async (req, res) => { 
+     // Lấy token từ cookies
+    const cookie = req.cookies
+    // Check xem có token hay không
+    // console.log(cookie);
+    if (!cookie && !cookie.refreshToken) throw new Error('No refresh token in cookies')
+    // Check token có hợp lệ hay không
+    const rs = await jwt.verify(cookie.refreshToken, process.env.JWT_SECRET);
+    const response = await User.findOne({ _id: rs.id , refreshToken: cookie.refreshToken})
+    // console.log(rs);
+    // console.log(response);
+    return res.status(200).json({
+        success: response ? true : false,
+        newAccessToken: response ? generateAccessToken(response.id, response.role) : 'Refresh token not matched'
+    })
+
+})
+
 //export
 
-module.exports = { register, login, getCurrent};
+module.exports = { register, login, logout, getCurrent,refreshToken};
