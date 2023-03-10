@@ -7,7 +7,7 @@ const newUser  = require('./user');
 const initRoutes = (app) => {
 
     app.use('/api/user', newUser);
-    app.use('/', (req, res) => res.json('hải đăng'));
+    // app.use('/', (req, res) => res.json('hải đăng'));
 
 
     //err path

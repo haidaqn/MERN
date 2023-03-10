@@ -23,3 +23,9 @@ initRoutes(app);
 app.listen(port, () => {
     console.log("server in running");
 })
+
+
+
+
+// create -> post, put -> body
+// get + delete -> query

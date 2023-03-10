@@ -2,6 +2,9 @@ const User = require('../models/User');
 const asyncHandler = require('express-async-handler');
 const  { generateAccessToken , generateRefreshToken} = require('../../middlewares/jwt');
 const jwt = require('jsonwebtoken');
+const sendMail = require('../../util/sendMail');
+const crypto = require('crypto');
+
 
 //register
 const register = asyncHandler(async (req, res) => {
@@ -21,9 +24,7 @@ const register = asyncHandler(async (req, res) => {
         })
     }
 });
-
 //login
-
 const login = asyncHandler(async (req,res) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -54,27 +55,22 @@ const login = asyncHandler(async (req,res) => {
     }
 
 });
-
+//logout
 const logout = asyncHandler(async (req,res) => {
     const cookie = req.cookies;
-    if (!cookie || !cookie.refreshToken) throw new Error("No refresh token...");
-
+    if (!cookie || !cookie.refreshToken) throw new Error("No refresh token..."); // ktra đăng nhập
     await User.findOneAndUpdate({ refreshToken: cookie.refreshToken },
         { refreshToken: '' }, { new: true });
-    
     res.clearCookie('refreshToken', {
         httpOnly: true,
         secure: true
     });
-
     return res.status(200).json({
         success: true,
         mes : ' logout is done'
     })
 
 })
-
-
 const getCurrent = asyncHandler(async (req, res) => {
     const userId = req.user.id;
 
@@ -89,7 +85,6 @@ const getCurrent = asyncHandler(async (req, res) => {
         rs: user ? user : 'User not found'
     })
 })
-
 const refreshToken = asyncHandler(async (req, res) => { 
      // Lấy token từ cookies
     const cookie = req.cookies
@@ -107,7 +102,70 @@ const refreshToken = asyncHandler(async (req, res) => {
     })
 
 })
+//
+// reset pw
+/* 
+    client -> mail -> check mail -> gui link 
+           -> click link -> api token -> check api token 
+           -> change pw
+*/
+
+const forgotPassword = asyncHandler(async (req,res) => {
+    const { email } = req.query;  
+    if (!email) throw new Error("No email");
+    const user = await User.findOne({ email });
+    if (!user) throw new Error("No user");
+    const resetToken = user.createPasswordChangedToken();
+    await user.save(); // luu resettoken vao db ...
+    //
+    
+    const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ.
+                <a href=${process.env.URL_SERVER}/api/user/reset-password/${resetToken}>Click here</a>`
+
+    const data = {
+        email,
+        html
+    }
+
+    const response = await sendMail(data);
+
+    // console.log(response);
+
+    return res.status(200).json({
+        success: true, 
+        response
+    });
+
+})
+
+
+const resetPassword = asyncHandler(async (req,res) => {
+    const { password, token } = req.body;
+    if (!password || !token) throw new Error("missing inputs");
+    const passwordResetToken = crypto.createHash('sha256').update(token).digest('hex')
+    const user = await User.findOne({ passwordResetToken , passwordResetExpires :{$gt: Date.now()}});
+
+    if (!user) throw new Error('Invalid reset token');
+    user.password = password;
+    user.passwordResetExpires = Date.now();
+    user.passwordResetToken = undefined;
+    user.passwordChangedAt = undefined;
+
+    await user.save();
+
+    return res.status(200).json({
+        success: user ? true : false,
+        mes: user ? 'Updated password' : 'Something went wrong'
+    });
+
+})
+
 
 //export
 
-module.exports = { register, login, logout, getCurrent,refreshToken};
+module.exports = {
+    register, login,
+    logout, getCurrent,
+    refreshToken, forgotPassword,
+    resetPassword
+};
