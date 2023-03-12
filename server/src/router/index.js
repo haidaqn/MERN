@@ -3,12 +3,12 @@
 const { notFoundPath, errHandler } = require('../middlewares/errHandler');
 //
 const newUser  = require('./user');
+const newProduct  = require('./product');
 //
 const initRoutes = (app) => {
 
     app.use('/api/user', newUser);
-    // app.use('/', (req, res) => res.json('hải đăng'));
-
+    app.use('/api/product', newProduct);
 
     //err path
     app.use(notFoundPath);
