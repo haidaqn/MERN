@@ -35,20 +35,20 @@ const login = asyncHandler(async (req,res) => {
     }
     const response = await User.findOne({ email }); // Instance được trả về khi dùng hàm của mongodb
     if (response && await response.isCorrectPassWord(password)) {
-        const { password, role, ...userData } = response.toObject();
+        const { password, role, refreshToken, ...userData } = response.toObject();
         const userId = response._id;
         const accessToken = generateAccessToken(userId, role); // taoj access
-        const refreshToken = generateRefreshToken(userId); // tao refresh
+        const newRefreshToken = generateRefreshToken(userId); // tao refresh
         //lưu refresh token vào db
-        await User.findByIdAndUpdate(userId, { refreshToken }, { new: true }); // trả về data new sau khi update data
-        res.cookie('refreshToken', refreshToken, {
+        await User.findByIdAndUpdate(userId, { refreshToken : newRefreshToken }, { new: true }); // trả về data new sau khi update data
+        res.cookie('refreshToken', newRefreshToken, {
             httpOnly: true,
             maxAge : 604800000 // thời gian hết hạn 7 ngày
         })
         return res.status(200).json({
             success: true,
             accessToken,
-            userData 
+            userData,
         });
     } else {
         throw new Error("invalid credentials !");
@@ -67,19 +67,15 @@ const logout = asyncHandler(async (req,res) => {
     });
     return res.status(200).json({
         success: true,
-        mes : ' logout is done'
+        mes : 'logout is done'
     })
 
 })
 const getCurrent = asyncHandler(async (req, res) => {
     const userId = req.user.id;
-
     // console.log(userId);
-
     const user = await User.findById( userId ).select('-refreshToken -password -role')
-
     // console.log(user);
-
     return res.status(200).json({
         success: user ? true : false,
         rs: user ? user : 'User not found'
@@ -118,26 +114,21 @@ const forgotPassword = asyncHandler(async (req,res) => {
     const resetToken = user.createPasswordChangedToken();
     await user.save(); // luu resettoken vao db ...
     //
-    
     const html = `Xin vui lòng click vào link dưới đây để thay đổi mật khẩu của bạn.Link này sẽ hết hạn sau 15 phút kể từ bây giờ.
                 <a href=${process.env.URL_SERVER}/api/user/reset-password/${resetToken}>Click here</a>`
-
     const data = {
         email,
         html
     }
-
     const response = await sendMail(data);
 
     // console.log(response);
-
     return res.status(200).json({
         success: true, 
         response
     });
 
 })
-
 
 const resetPassword = asyncHandler(async (req,res) => {
     const { password, token } = req.body;
