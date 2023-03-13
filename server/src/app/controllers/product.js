@@ -26,6 +26,47 @@ const getProduct = asyncHandler(async (req, res) => {
     })
 });
 
+const getProducts = asyncHandler(async (req, res) => {
+
+    const queries = { ...req.query };
+    const excludeFields = ["limit", "page", "sort", "fields"];
+    excludeFields.forEach(item => delete queries[item]); // loai bo cac truong
+
+    let queryString = JSON.stringify(queries);
+    queryString = queryString.replace(/\b(gte|gt|lt|lte)\b/g, item => `$${item}`); //chuyển thành $gte $gt
+    const formatQueries = JSON.parse(queryString);
+
+    console.log(formatQueries);
+
+    if ( queries?.title ) formatQueries.title = { $regex: queries.title, $options: "i" };
+    let queriesCommand = Product.find(formatQueries);
+    // sorting
+
+    if (req?.query?.sort) {
+        const sortBy = req.query.sort.split(",").join(" ");
+        queriesCommand = queriesCommand.sort(sortBy);
+    }
+
+    try {
+        const response = await queriesCommand.exec();
+        const count = await Product.countDocuments(formatQueries);
+        return res.status(200).json({
+            success: true,
+            products: response ? response : "cannot products...",
+            count
+        });
+    } catch (err) {
+        throw new Error(err.message);
+    }
+    
+
+    
+
+    // pagination
+
+}); 
+
+
 const updateProduct = asyncHandler(async (req, res) => { 
     const { pid } = req.params;
     if (!pid) throw new Error("Missing input");
@@ -51,5 +92,6 @@ const deleteProduct = asyncHandler(async (req, res) => {
  //
 module.exports = {
     createProduct, getProduct,
-    updateProduct,deleteProduct
+    updateProduct,deleteProduct,
+    getProducts
 };
